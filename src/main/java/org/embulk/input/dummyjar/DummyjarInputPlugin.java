@@ -1,19 +1,17 @@
 package org.embulk.input.dummyjar;
 
 import java.util.List;
-import com.google.common.base.Optional;
-import org.embulk.config.TaskReport;
-import org.embulk.config.Config;
-import org.embulk.config.ConfigDefault;
 import org.embulk.config.ConfigDiff;
 import org.embulk.config.ConfigSource;
 import org.embulk.config.Task;
+import org.embulk.config.TaskReport;
 import org.embulk.config.TaskSource;
 import org.embulk.spi.Exec;
 import org.embulk.spi.InputPlugin;
+import org.embulk.spi.PageBuilder;
 import org.embulk.spi.PageOutput;
 import org.embulk.spi.Schema;
-import org.embulk.spi.SchemaConfig;
+import org.embulk.spi.type.Types;
 
 public class DummyjarInputPlugin
         implements InputPlugin
@@ -21,23 +19,6 @@ public class DummyjarInputPlugin
     public interface PluginTask
             extends Task
     {
-        // configuration option 1 (required integer)
-        @Config("option1")
-        public int getOption1();
-
-        // configuration option 2 (optional string, null is not allowed)
-        @Config("option2")
-        @ConfigDefault("\"myvalue\"")
-        public String getOption2();
-
-        // configuration option 3 (optional string, null is allowed)
-        @Config("option3")
-        @ConfigDefault("null")
-        public Optional<String> getOption3();
-
-        // if you get schema from config
-        @Config("columns")
-        public SchemaConfig getColumns();
     }
 
     @Override
@@ -46,7 +27,10 @@ public class DummyjarInputPlugin
     {
         PluginTask task = config.loadConfig(PluginTask.class);
 
-        Schema schema = task.getColumns().toSchema();
+        Schema schema = Schema.builder()
+            .add("id", Types.LONG)
+            .add("name", Types.STRING)
+            .build();
         int taskCount = 1;  // number of run() method calls
 
         return resume(task.dump(), schema, taskCount, control);
@@ -75,8 +59,17 @@ public class DummyjarInputPlugin
     {
         PluginTask task = taskSource.loadTask(PluginTask.class);
 
-        // Write your code here :)
-        throw new UnsupportedOperationException("DummyjarInputPlugin.run method is not implemented yet");
+        try (PageBuilder pageBuilder = new PageBuilder(Exec.getBufferAllocator(), schema, output)) {
+            pageBuilder.setLong(0, 42);
+            pageBuilder.setString(1, "foo");
+            pageBuilder.addRecord();
+            pageBuilder.setLong(0, 84);
+            pageBuilder.setString(1, "bar");
+            pageBuilder.addRecord();
+            pageBuilder.finish();
+        }
+
+        return Exec.newTaskReport();
     }
 
     @Override
