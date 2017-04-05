@@ -1,32 +1,28 @@
 # Dummyjar input plugin for Embulk
 
-TODO: Write short description here and build.gradle file.
+A dummy plugin to test: https://github.com/embulk/embulk/pull/592
 
 ## Overview
 
 * **Plugin type**: input
-* **Resume supported**: yes
-* **Cleanup supported**: yes
+* **Resume supported**: no
+* **Cleanup supported**: no
 * **Guess supported**: no
 
 ## Configuration
 
-- **option1**: description (integer, required)
-- **option2**: description (string, default: `"myvalue"`)
-- **option3**: description (string, default: `null`)
+No configuration.
 
 ## Example
 
 ```yaml
 in:
-  type: dummyjar
-  option1: example1
-  option2: example2
+  type: jar:/full/path/to/your/built/jar
 ```
 
 
 ## Build
 
 ```
-$ ./gradlew gem  # -t to watch change of files and rebuild continuously
+$ ./gradlew pluginJar
 ```
