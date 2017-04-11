@@ -44,7 +44,8 @@ classes {
 task pluginJar(type: Jar) {
     manifest {
         attributes 'Implementation-Title': project.name,
-                   'Implementation-Version': version
+                   'Implementation-Version': version,
+                   'Embulk-Plugin-Main-Class': "org.embulk.input.dummyjar.DummyjarInputPlugin"
     }
     baseName = project.name + '-plugin'
     // TODO(dmikurube): Exclude "provided" dependencies.
