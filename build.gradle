@@ -10,14 +10,14 @@ configurations {
     provided
 }
 
-version = "0.0.1"
+version = "0.0.2"
 
 sourceCompatibility = 1.7
 targetCompatibility = 1.7
 
 dependencies {
-    compile  "org.embulk:embulk-core:0.8.18"
-    provided "org.embulk:embulk-core:0.8.18"
+    compile  "org.embulk:embulk-core:0.8.25"
+    provided "org.embulk:embulk-core:0.8.25"
     // compile "YOUR_JAR_DEPENDENCY_GROUP:YOUR_JAR_DEPENDENCY_MODULE:YOUR_JAR_DEPENDENCY_VERSION"
     testCompile "junit:junit:4.+"
 }
@@ -45,6 +45,7 @@ task pluginJar(type: Jar) {
     manifest {
         attributes 'Implementation-Title': project.name,
                    'Implementation-Version': version,
+                   'Embulk-Plugin-Spi-Version': "0",
                    'Embulk-Plugin-Main-Class': "org.embulk.input.dummyjar.DummyjarInputPlugin",
                    'Embulk-Plugin-Security-Policy': "runtime"
     }

@@ -59,16 +59,6 @@ public class DummyjarInputPlugin
     {
         PluginTask task = taskSource.loadTask(PluginTask.class);
 
-        try {
-            List<String> lines = java.nio.file.Files.readAllLines(java.nio.file.Paths.get("/tmp/foo"),
-                                                                  java.nio.charset.StandardCharsets.UTF_8);
-            for (String line : lines) {
-                System.out.println(line);
-            }
-        } catch (java.io.IOException ex) {
-            ex.printStackTrace();
-        }
-
         try (PageBuilder pageBuilder = new PageBuilder(Exec.getBufferAllocator(), schema, output)) {
             pageBuilder.setLong(0, 42);
             pageBuilder.setString(1, "foo");
