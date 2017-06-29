@@ -1,5 +1,6 @@
 plugins {
     id "java"
+    id "maven"
     id "com.jfrog.bintray" version "1.7.3"
     id "com.github.johnrengelman.shadow" version "2.0.1"
 }
@@ -11,7 +12,8 @@ configurations {
     provided
 }
 
-version = "0.0.2"
+group = "org.embulk.input.dummyjar"
+version = "0.0.3"
 
 sourceCompatibility = 1.7
 targetCompatibility = 1.7
@@ -23,35 +25,83 @@ dependencies {
     testCompile "junit:junit:4.+"
 }
 
-task pluginJavaProperties(dependsOn: processResources) {
-    doLast {
-        file("$buildDir/resources").mkdir()
-        file("$buildDir/resources/main").mkdir()
-        new File("$buildDir/resources/main/plugin.properties").withWriter { w ->
-            Properties p = new Properties()
-            p['pluginMainClass'] = "org.embulk.input.dummyjar.DummyjarInputPlugin"
-            p['pluginVersion'] = version
-            p.store w, null
+// EXPERIMENTAL: Builds a JAR-based plugin file with dependencies embedded.
+task pluginJar(type: Jar) {
+    destinationDir = file("pkg")
+
+    configurations {
+        pluginArtifact
+    }
+
+    artifacts {
+        pluginArtifact file: pluginJar.archivePath, builtBy: pluginJar
+    }
+
+    manifest {
+        attributes 'Embulk-Plugin-Spi-Version': "0",
+                   'Embulk-Plugin-Main-Class': "org.embulk.input.dummyjar.DummyjarInputPlugin",
+                   'Implementation-Title': project.name,
+                   'Implementation-Version': version
+    }
+
+    from {
+        // "provided" dependencies are excluded as they are provided at runtime by the Embulk core.
+        def embedded = configurations.runtime - configurations.provided
+
+        // Dependencies are picked up with extracting ".jar" files.
+        embedded.collect { ( it.isFile() && it.name.endsWith(".jar") ) ? zipTree(it) : it }
+    }
+
+    // Signature files of dependencies are excluded as they cause SecurityException.
+    exclude("META-INF/*.DSA")
+    exclude("META-INF/*.RSA")
+    exclude("META-INF/*.SF")
+
+    with jar
+}
+
+def cleanupPomInPluginJar = {
+    // All dependencies except for "org.embulk:embulk-core" are removed.
+    whenConfigured { pom ->
+        pom.dependencies = pom.dependencies.findAll { dependency ->
+            ( dependency.groupId == "org.embulk" && dependency.artifactId == "embulk-core" )
+        }
+    }
+
+    // The dependency "org.embulk:embulk-core" is "provided" for plugin JARs.
+    whenConfigured { pom ->
+        pom.dependencies.find { dependency ->
+            ( dependency.groupId == "org.embulk" && dependency.artifactId == "embulk-core" )
+        }.scope = "runtime"
+    }
+}
+
+// EXPERIMENTAL: Uploads the JAR-based plugin build in "pluginJar".
+// TODO: Upload actually. It now locates the artifact on the local Maven repository under $buildDir.
+task uploadPluginJar(type: Upload) {
+    doFirst {
+        file("$buildDir/m2/repository").deleteDir()
+    }
+
+    configuration = configurations.pluginArtifact
+
+    repositories {
+        mavenDeployer {
+            repository(url: "file:///$buildDir/m2/repository")
+            pom cleanupPomInPluginJar
         }
     }
 }
 
-classes {
-    dependsOn pluginJavaProperties
-}
+install {
+    configuration = configurations.pluginArtifact
+    repositories {
+        mavenInstaller {
+            addFilter('pluginJar') { artifact, file ->
+                artifact.name == "embulk-input-dummyjar"
+            }
 
-// Creates a kind of a fat jar as an Embulk plugin.
-// It does not use "shadowJar" since "shadowJar" brings "provided" dependencies as well.
-task pluginJar(type: Jar) {
-    manifest {
-        attributes 'Implementation-Title': project.name,
-                   'Implementation-Version': version,
-                   'Embulk-Plugin-Spi-Version': "0",
-                   'Embulk-Plugin-Main-Class': "org.embulk.input.dummyjar.DummyjarInputPlugin",
-                   'Embulk-Plugin-Security-Policy': "runtime"
+            pom("pluginJar", cleanupPomInPluginJar)
+        }
     }
-    baseName = project.name + '-plugin'
-    // TODO(dmikurube): Exclude "provided" dependencies.
-    // from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
-    with jar
 }
